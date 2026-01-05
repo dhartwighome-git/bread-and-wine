@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>My current stock</h1>
+    <table id="inventory"></table>
+
+    <script>
+    const products = JSON.parse(localStorage.getItem("products")) || [];
+
+    function editRow(index) {
+        const row = document.querySelectorAll("tr")[index + 1];
+        const cells = row.querySelectorAll("td");
+
+        cells[0].innerHTML = `<input value="${products[index].name}">`;
+        cells[1].innerHTML = `<input type="number" value="${products[index].quantity}">`;
+        cells[2].innerHTML = `<input type="number" value="${products[index].price}">`;
+        cells[3].innerHTML = `<button class="saveButton" onclick="saveRow(${index})">Save</button>
+        <button class="cancelButton" onclick="lockRow(${index})">Cancel</button>`;
+    }
+
+    function lockRow(index) {
+        const row = document.querySelectorAll("tr")[index + 1];
+        const cells = row.querySelectorAll("td");
+
+        cells[0].innerHTML = `${products[index].name}`;
+        cells[1].innerHTML = `${products[index].quantity}`;
+        cells[2].innerHTML = `${products[index].price}`;
+        cells[3].innerHTML = `<button class="editButton" onclick="editRow(${index})">Edit</button>
+        <button class="deleteButton" onclick="deleteRow(${index})">Delete</button>`;
+    }
+
+    function saveRow(index) {
+        const row = document.querySelectorAll("tr")[index + 1];
+        const inputs = row.querySelectorAll("input");
+
+        const name = inputs[0].value;
+        const qty = Number(inputs[1].value);
+        const price = Number(inputs[2].value);
+
+        products[index] = {
+            name: name,
+            quantity: qty,
+            price: price
+        };
+
+        /* Validate */
+        if (!name) {
+            alert("Please enter a product name!");
+        }
+        else if (qty<0) {
+            alert("Please enter a valid product count!");
+        }
+        else if (price<0) {
+            alert("Please enter a valid price!");
+        }
+        else {
+            localStorage.setItem("products", JSON.stringify(products));
+            renderTable();
+        }
+    }
+
+    function deleteRow(index) {
+        if (confirm("Delete this item?")) {
+            products.splice(index, 1);
+            localStorage.setItem("products", JSON.stringify(products));
+            renderTable();
+        }
+
+    }
+
+    function renderTable() {
+        const table = document.getElementById("inventory");
+        table.innerHTML = "<tr><th>Name</th><th>Count</th><th>Price</th></tr>";
+
+        products.forEach((item, index) => {
+            table.innerHTML += `
+            <tr>
+                <td>${item.name}</td>
+                <td>${item.quantity}</td>
+                <td>${item.price}</td>
+                <td id="buttonColumn" class="actions">
+                    <button class="editButton" onclick="editRow(${index})">Edit</button>
+                    
+                    <button class="deleteButton" onclick="deleteRow(${index})">Delete</button>
+                </td>
+            </tr>
+            `;
+        });
+    };
+
+    renderTable();
+    </script>
+
+    <tr>
+    <form id="addForm">
+        <td><input type="text" name="name" placeholder="New item"></td>
+        <td><input type="number" name="quantity" placeholder="1x"></td>
+        <td><input type="number" step="0.1" name="price" placeholder="Price""></td>
+        <td>
+        <button type="submit">Save</button>
+        <button type="reset">Clear</button>
+        </td>
+    </form>
+    </tr>
+
+    <script>
+        const form = document.getElementById("addForm")
+
+        form.addEventListener("submit", e => {
+            e.preventDefault();
+
+            const name = form.name.value;
+            const qty = Number(form.quantity.value);
+            const price = Number(form.price.value);
+
+            /* Validate */
+            if (!name) {
+                alert("Please enter a product name!");
+            }
+            else if (qty<0) {
+                alert("Please enter a valid product count!");
+            }
+            else if (price<0) {
+                alert("Please enter a valid price!");
+            }
+            else {
+                products.push({ name, quantity: qty, price });
+
+                localStorage.setItem("products", JSON.stringify(products))
+                console.log(products)
+                renderTable();
+            }
+                       
+        });
+
+        
+    </script>
+
+</body>
