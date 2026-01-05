@@ -3,116 +3,252 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Bread and wine - Manage your stock</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>My current stock</h1>
-    <table id="inventory"></table>
+    <script type="module">
+        /* Initialise Firestore database */
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
-    <script>
-    const products = JSON.parse(localStorage.getItem("products")) || [];
+        // const auth = getAuth();
 
-    function editRow(index) {
-        const row = document.querySelectorAll("tr")[index + 1];
-        const cells = row.querySelectorAll("td");
-
-        cells[0].innerHTML = `<input value="${products[index].name}">`;
-        cells[1].innerHTML = `<input type="number" value="${products[index].quantity}">`;
-        cells[2].innerHTML = `<input type="number" value="${products[index].price}">`;
-        cells[3].innerHTML = `<button class="saveButton" onclick="saveRow(${index})">Save</button>
-        <button class="cancelButton" onclick="lockRow(${index})">Cancel</button>`;
-    }
-
-    function lockRow(index) {
-        const row = document.querySelectorAll("tr")[index + 1];
-        const cells = row.querySelectorAll("td");
-
-        cells[0].innerHTML = `${products[index].name}`;
-        cells[1].innerHTML = `${products[index].quantity}`;
-        cells[2].innerHTML = `${products[index].price}`;
-        cells[3].innerHTML = `<button class="editButton" onclick="editRow(${index})">Edit</button>
-        <button class="deleteButton" onclick="deleteRow(${index})">Delete</button>`;
-    }
-
-    function saveRow(index) {
-        const row = document.querySelectorAll("tr")[index + 1];
-        const inputs = row.querySelectorAll("input");
-
-        const name = inputs[0].value;
-        const qty = Number(inputs[1].value);
-        const price = Number(inputs[2].value);
-
-        products[index] = {
-            name: name,
-            quantity: qty,
-            price: price
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA73guwI5BCtkvaqLUgBkQKc9zF209fNR0",
+            authDomain: "bread-and-wine.firebaseapp.com",
+            projectId: "bread-and-wine",
+            storageBucket: "bread-and-wine.firebasestorage.app",
+            messagingSenderId: "754486129562",
+            appId: "1:754486129562:web:1194bd45b506597857c023"
         };
 
-        /* Validate */
-        if (!name) {
-            alert("Please enter a product name!");
-        }
-        else if (qty<0) {
-            alert("Please enter a valid product count!");
-        }
-        else if (price<0) {
-            alert("Please enter a valid price!");
-        }
-        else {
-            localStorage.setItem("products", JSON.stringify(products));
-            renderTable();
-        }
-    }
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
-    function deleteRow(index) {
-        if (confirm("Delete this item?")) {
-            products.splice(index, 1);
-            localStorage.setItem("products", JSON.stringify(products));
-            renderTable();
-        }
-
-    }
-
-    function renderTable() {
-        const table = document.getElementById("inventory");
-        table.innerHTML = "<tr><th>Name</th><th>Count</th><th>Price</th></tr>";
-
-        products.forEach((item, index) => {
-            table.innerHTML += `
-            <tr>
-                <td>${item.name}</td>
-                <td>${item.quantity}</td>
-                <td>${item.price}</td>
-                <td id="buttonColumn" class="actions">
-                    <button class="editButton" onclick="editRow(${index})">Edit</button>
-                    
-                    <button class="deleteButton" onclick="deleteRow(${index})">Delete</button>
-                </td>
-            </tr>
-            `;
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                loginForm.style.display = "none";
+                userPanel.style.display = "block";
+                userEmailSpan.textContent = `Logged in as: ${user.email}`;
+                renderTable();
+            } else {
+                loginForm.style.display = "block";
+                userPanel.style.display = "none";
+                document.getElementById("inventory").innerHTML = "";
+            }
         });
-    };
 
-    renderTable();
-    </script>
+        async function fetchProducts() {
+            const snapshot = await getDocs(collection(db, "products"));
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
 
-    <tr>
-    <form id="addForm">
-        <td><input type="text" name="name" placeholder="New item"></td>
-        <td><input type="number" name="quantity" placeholder="1x"></td>
-        <td><input type="number" step="0.1" name="price" placeholder="Price""></td>
-        <td>
-        <button type="submit">Save</button>
-        <button type="reset">Clear</button>
-        </td>
-    </form>
-    </tr>
+        function editRow(index, product) {
+            const row = document.querySelectorAll("tr")[index + 1];
+            const cells = row.querySelectorAll("td");
 
-    <script>
+            // Clear cells and create input elements
+            cells[0].innerHTML = '';
+            const nameInput = document.createElement("input");
+            nameInput.value = product.name;
+            cells[0].appendChild(nameInput);
+
+            cells[1].innerHTML = '';
+            const qtyInput = document.createElement("input");
+            qtyInput.type = "number";
+            qtyInput.value = product.quantity;
+            cells[1].appendChild(qtyInput);
+
+            cells[2].innerHTML = '';
+            const priceInput = document.createElement("input");
+            priceInput.type = "number";
+            priceInput.step = "0.01";
+            priceInput.value = product.price;
+            cells[2].appendChild(priceInput);
+
+            // Actions: Save / Cancel
+            cells[3].innerHTML = '';
+
+            const saveBtn = document.createElement("button");
+            saveBtn.textContent = "Save";
+            saveBtn.className = "saveButton";
+            saveBtn.addEventListener("click", () => saveRow(product.id, index, {
+                name: nameInput.value,
+                quantity: Number(qtyInput.value),
+                price: Number(priceInput.value)
+            }));
+
+            const cancelBtn = document.createElement("button");
+            cancelBtn.textContent = "Cancel";
+            cancelBtn.className = "cancelButton";
+            cancelBtn.addEventListener("click", () => lockRow(index, product));
+
+            cells[3].appendChild(saveBtn);
+            cells[3].appendChild(cancelBtn);
+        }
+
+        function lockRow(index, product) {
+            const row = document.querySelectorAll("tr")[index + 1];
+            const cells = row.querySelectorAll("td");
+
+            console.log(product)
+            // Restore product data in cells
+            cells[0].textContent = product.name;
+            cells[1].textContent = product.quantity;
+            cells[2].textContent = product.price;
+
+            // Restore action buttons
+            cells[3].innerHTML = '';
+
+            // Edit button
+            const editBtn = document.createElement("button");
+            editBtn.textContent = "Edit";
+            editBtn.className = "editButton";
+            editBtn.addEventListener("click", () => editRow(index, product));
+            cells[3].appendChild(editBtn);
+
+            // Delete button
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Delete";
+            deleteBtn.className = "deleteButton";
+            deleteBtn.addEventListener("click", () => deleteRow(product.id, index));
+            cells[3].appendChild(deleteBtn);
+        }
+
+
+        async function saveRow(id, index) {
+            const row = document.querySelectorAll("tr")[index + 1];
+            const inputs = row.querySelectorAll("input");
+
+            const name = inputs[0].value;
+            const qty = Number(inputs[1].value);
+            const price = Number(inputs[2].value);
+
+            /* Validate */
+            if (!name) {
+                alert("Please enter a product name!");
+                return;
+            }
+            if (qty<0) {
+                alert("Please enter a valid product count!");
+                return;
+            }
+            if (price<0) {
+                alert("Please enter a valid price!");
+                return;
+            }
+            try {
+                await updateDoc(doc(db, "products", id), {
+                    name: name,
+                    quantity: qty,
+                    price: price
+                });
+                //localStorage.setItem("products", JSON.stringify(products));
+                renderTable();
+            }
+            catch (err) {
+                console.error(err);
+                alert("Could not update item.")
+            }
+        }
+
+        async function deleteRow(id, index) {
+            const confirmed = confirm("Are you sure?");
+            if (!confirmed) return;
+
+            try {
+                console.log("Deleting product:", id)
+                await deleteDoc(doc(db, "products", id));
+                renderTable();
+            } catch (err) {
+                console.error(err);
+                alert("Unable to delete product.")
+            }
+        }
+
+        async function renderTable() {
+            const table = document.getElementById("inventory");
+            const products = await fetchProducts();
+            table.innerHTML = "<tr><th>Name</th><th>Count</th><th>Price</th></tr>";
+
+            // Create table rows dynamically
+            products.forEach((item, index) => {
+                const row = table.insertRow(-1); // add row at the end
+
+                // Name, Quantity, Price cells
+                const nameCell = row.insertCell(0);
+                const qtyCell = row.insertCell(1);
+                const priceCell = row.insertCell(2);
+                const actionsCell = row.insertCell(3);
+
+                nameCell.textContent = item.name;
+                qtyCell.textContent = item.quantity;
+                priceCell.textContent = item.price;
+
+                actionsCell.className = "actions";
+
+                // Edit button
+                const editBtn = document.createElement("button");
+                editBtn.textContent = "Edit";
+                editBtn.className = "editButton";
+                editBtn.addEventListener("click", () => editRow(index, item));
+                actionsCell.appendChild(editBtn);
+
+                // Delete button
+                const deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "Delete";
+                deleteBtn.className = "deleteButton";
+                deleteBtn.addEventListener("click", () => deleteRow(item.id, index));
+                actionsCell.appendChild(deleteBtn);
+            });
+        }
+
+        renderTable();
+
+        const loginForm = document.getElementById("loginForm");
+        const userPanel = document.getElementById("userPanel");
+        const userEmailSpan = document.getElementById("userEmail");
+
+        loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const email = loginForm.email.value;
+        const password = loginForm.password.value;
+
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            
+            // Optional: hide login form and show main app
+            loginForm.style.display = "none";
+            userPanel.style.display = "block";
+            userEmailSpan.textContent = `Logged in as: ${user.email}`;
+            renderTable(); // fetch products after login
+        } catch (error) {
+            console.error(error.code, error.message);
+            alert("Login failed: " + error.message);
+        }
+        });
+
+        // Sign Out
+        signOutBtn.addEventListener("click", async () => {
+            await signOut(auth);
+
+            // Reset UI
+            loginForm.style.display = "block";
+            userPanel.style.display = "none";
+            loginForm.reset();
+            document.getElementById("inventory").innerHTML = ""; // clear table
+        });
+
         const form = document.getElementById("addForm")
 
-        form.addEventListener("submit", e => {
+        form.addEventListener("submit", async (e) => {
             e.preventDefault();
 
             const name = form.name.value;
@@ -122,24 +258,66 @@
             /* Validate */
             if (!name) {
                 alert("Please enter a product name!");
+                return;
             }
-            else if (qty<0) {
+            if (qty<0) {
                 alert("Please enter a valid product count!");
+                return;
             }
-            else if (price<0) {
+            if (price<0) {
                 alert("Please enter a valid price!");
+                return;
             }
-            else {
-                products.push({ name, quantity: qty, price });
 
-                localStorage.setItem("products", JSON.stringify(products))
-                console.log(products)
+            try {
+                await addDoc(collection(db, "products"), {
+                    name: name,
+                    quantity: qty,
+                    price: price
+                });
+                form.reset();
                 renderTable();
+            }
+            catch (err) {
+                console.error(err);
+                alert("Could not add product.")
             }
                        
         });
 
-        
     </script>
+
+    <header>
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+
+        <div id="userPanel" style="display:none">
+            <span id="userEmail"></span>
+            <button id="signOutBtn">Sign Out</button>
+        </div>
+    </header>
+    
+    <main>
+        <h1>My current stock</h1>
+
+        <table id="inventory"></table>
+
+        <tr>
+        <form id="addForm">
+            <td><input type="text" name="name" placeholder="New item"></td>
+            <td><input type="number" name="quantity" placeholder="1x"></td>
+            <td><input type="number" step="0.1" name="price" placeholder="Price""></td>
+            <td>
+            <button type="submit">Save</button>
+            <button type="reset">Clear</button>
+            </td>
+        </form>
+        </tr>
+    </main>
+
+    
 
 </body>
