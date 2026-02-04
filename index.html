@@ -8,6 +8,16 @@
 </head>
 <body>
     <script type="module">
+
+        /*
+            To do:
+            - save custom column
+            - retrieve columns
+            - update columns
+            - show / hide columns
+            - delete column
+        */
+
         /* Initialise Firestore database */
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
         import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
@@ -25,10 +35,143 @@
             appId: "1:754486129562:web:1194bd45b506597857c023"
         };
 
+        // Default columns
+        const DEFAULT_COLUMNS = [
+            // Product
+            {
+                key: "name",
+                keyText: "Name",
+                type: "text",
+                order: 0,
+                active: true
+            },
+
+            // Description
+            {
+                key: "description",
+                keyText: "Description",
+                type: "text",
+                order: 1,
+                active: true
+            },
+
+            // Product Group
+            {
+                key: "group",
+                keyText: "Group",
+                type: "select",
+                order: 2,
+                allowCustom: true,
+                active: true
+            },
+
+            // Aisle
+            {
+                key: "aisle",
+                keyText: "Aisle",
+                type: "select",
+                order: 3,
+                allowCustom: true,
+                active: true
+            },
+
+            // Brand
+            {
+                key: "brand",
+                keyText: "Brand",
+                type: "select",
+                order: 4,
+                allowCustom: true,
+                active: true
+            },
+
+            // Price
+            {
+                key: "price",
+                keyText: "Price",
+                type: "number",
+                order: 5,
+                active: true
+            },
+
+            // is Special Offer?
+            {
+                key: "specialOffer",
+                keyText: "Special offer?",
+                type: "checkbox",
+                order: 6,
+                active: true
+            },
+
+            // Count (CU)
+            {
+                key: "countCU",
+                keyText: "Count (CU)",
+                type: "number",
+                order: 7,
+                active: true
+            },
+
+            // Contents (Slices, Pieces etc.)
+            {
+                key: "pieces",
+                keyText: "Content (Pcs.)",
+                type: "number",
+                order: 8,
+                active: true
+            },
+
+            // Shop
+            {
+                key: "shop",
+                keyText: "Shop",
+                type: "select",
+                order: 9,
+                allowCustom: true,
+                active: true
+            },
+
+            // Make plan using...
+            {
+                key: "shoppingPlanSource",
+                keyText: "Shopping plan from...",
+                type: "select",
+                order: 10,
+                allowCustom: false,
+                active: true,
+                options: ["Name", "Group"]
+            },
+
+            // Min count (CU)
+            {
+                key: "minCountCU",
+                keyText: "Min Count (CU)",
+                type: "number",
+                order: 11,
+                active: true
+            },
+        
+            // Max Count (CU)
+            {
+                key: "maxCountCU",
+                keyText: "Max Count (CU)",
+                type: "number",
+                order: 12,
+                active: true
+            },
+        ]
+
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+
+        function toCamelCase(str) {
+            return str
+                .replace(/[^a-zA-Z0-9 ]+/g, '')      // remove non-alphanumeric
+                .replace(/\s+(.)/g, (_, chr) => chr.toUpperCase()) // capitalize letters after spaces
+                .replace(/^(.)/, (_, chr) => chr.toLowerCase());   // lowercase first letter
+        }
 
         onAuthStateChanged(auth, user => {
             if (user) {
@@ -43,118 +186,209 @@
             }
         });
 
+        var showCols = "active";
+
+
         async function fetchProducts() {
             const snapshot = await getDocs(collection(db, "products"));
             return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
 
-        function editRow(index, product) {
-            const row = document.querySelectorAll("tr")[index + 1];
-            const cells = row.querySelectorAll("td");
+        async function fetchColumns(getActive = true) {
+            // to do: include default columns
+            const columnMap = new Map();
 
-            // Clear cells and create input elements
-            cells[0].innerHTML = '';
-            const nameInput = document.createElement("input");
-            nameInput.value = product.name;
-            cells[0].appendChild(nameInput);
+            DEFAULT_COLUMNS.forEach(col => {
+                columnMap.set(col.key, { ...col })
+            })
 
-            cells[1].innerHTML = '';
-            const qtyInput = document.createElement("input");
-            qtyInput.type = "number";
-            qtyInput.value = product.quantity;
-            cells[1].appendChild(qtyInput);
+            const snapshot = await getDocs(collection(db, "columns"));
 
-            cells[2].innerHTML = '';
-            const priceInput = document.createElement("input");
-            priceInput.type = "number";
-            priceInput.step = "0.01";
-            priceInput.value = product.price;
-            cells[2].appendChild(priceInput);
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
 
-            // Actions: Save / Cancel
-            cells[3].innerHTML = '';
+                columnMap.set(data.key, {
+                    id: doc.id,
+                    ...data,
+                    system: columnMap.has(data.key) ? false : data.system ?? false
+                });
+            });
+            
+            const arr = Array.from(columnMap.values())
+
+            // only get active columns
+            if (getActive === true) {
+                console.log("Getting active columns")
+                return arr.filter(col => col.active !== false)
+                        .sort((a, b) => a.order - b.order);
+            }
+            else {
+                console.log("Getting all columns")
+            }
+
+            return arr.sort((a, b) => a.order - b.order);
+        }        
+
+        async function updateColumn(column, updates) { // set columns active/inactive
+            console.log("Updating column:", column, updates)
+            if (!column?.key) {
+                throw new Error("updateColumn: column.key is required");
+            }
+
+            const userColumnsRef = collection(db, "columns");
+
+            if (column.id) {
+                await updateDoc(
+                    doc(userColumnsRef, column.id),
+                    { ...updates }
+                );
+                return;
+            }
+
+            const defaultCol = DEFAULT_COLUMNS.find(c => c.key === column.key);
+
+            if (defaultCol) {
+                // Create Firestore override based on default + updates
+                await addDoc(userColumnsRef, {
+                    ...defaultCol,
+                    ...updates,
+                    system: false,      // now user-controlled
+                    active: updates.active ?? defaultCol.active ?? true
+                });
+                return;
+            }
+
+            throw new Error(`updateColumn: Unknown column "${column.key}"`);
+        }
+
+        function getColumnOptions(products, columnKey) {
+            const values = new Set();
+
+            products.forEach(product => {
+                const value = product[columnKey];
+                if (value) {
+                    values.add(value);
+                }
+            });
+
+            return Array.from(values);
+            }
+
+        async function editRow(rowIndex, product, products) {
+            const table = document.getElementById("inventory");
+            const row = table.rows[rowIndex + 1]; // skip header
+            const columns = await fetchColumns();
+
+            // Clear row
+            row.innerHTML = "";
+
+            // Create editable cells
+            columns.forEach(col => {
+                const cell = row.insertCell();
+
+                // Render selects with options
+                if (col.type === "select") {
+                    const select = document.createElement("select");
+                    const colOptions = getColumnOptions(products, col.key);
+                    
+                    (col.options ?? []).forEach(opt => {
+                        const o = document.createElement("option");
+                        o.value = opt;
+                        o.textContent = opt;
+                        select.appendChild(o);
+                    });
+
+                    colOptions.forEach(opt => {
+                        const o = document.createElement("option");
+                        o.value = opt;
+                        o.textContent = opt;
+                        select.appendChild(o);
+                    });
+
+                    if (col.allowCustom) {
+                        const customOpt = document.createElement("option");
+                        customOpt.value = "__custom__";
+                        customOpt.textContent = "Custom...";
+                        select.appendChild(customOpt);
+                    }
+                    console.log("Current value:", product[col.key])
+                    const val = product[col.key] ?? "";
+                    select.value = val;
+                    select.dataset.key = col.key;
+
+                    select.addEventListener("change", () => {
+                        if (select.value === "__custom__") {
+                            const input = document.createElement("input");
+                            input.type = "text";
+                            input.placeholder = "Enter custom value";
+                            input.dataset.key = col.key;
+                            select.replaceWith(input);
+                        }
+                    });
+
+                    cell.appendChild(select);
+                }
+                // Render inputs
+                else {
+                    const input = document.createElement("input");
+                    input.value =
+                        product[col.key]?.text ??
+                        product[col.key] ??
+                        "";
+                    input.dataset.key = col.key;
+                    input.type = col.type === "number" ? "number" :
+                                col.type === "date" ? "date" : "text";
+
+                    cell.appendChild(input);
+                }
+            });
+
+            // Actions cell
+            const actionsCell = row.insertCell();
 
             const saveBtn = document.createElement("button");
             saveBtn.textContent = "Save";
             saveBtn.className = "saveButton";
-            saveBtn.addEventListener("click", () => saveRow(product.id, index, {
-                name: nameInput.value,
-                quantity: Number(qtyInput.value),
-                price: Number(priceInput.value)
-            }));
+            saveBtn.addEventListener("click", () => saveRow(product.id, rowIndex));
 
             const cancelBtn = document.createElement("button");
             cancelBtn.textContent = "Cancel";
             cancelBtn.className = "cancelButton";
-            cancelBtn.addEventListener("click", () => lockRow(index, product));
+            cancelBtn.addEventListener("click", renderTable);
 
-            cells[3].appendChild(saveBtn);
-            cells[3].appendChild(cancelBtn);
+            actionsCell.append(saveBtn, cancelBtn);
         }
 
         function lockRow(index, product) {
-            const row = document.querySelectorAll("tr")[index + 1];
-            const cells = row.querySelectorAll("td");
-
-            console.log(product)
-            // Restore product data in cells
-            cells[0].textContent = product.name;
-            cells[1].textContent = product.quantity;
-            cells[2].textContent = product.price;
-
-            // Restore action buttons
-            cells[3].innerHTML = '';
-
-            // Edit button
-            const editBtn = document.createElement("button");
-            editBtn.textContent = "Edit";
-            editBtn.className = "editButton";
-            editBtn.addEventListener("click", () => editRow(index, product));
-            cells[3].appendChild(editBtn);
-
-            // Delete button
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Delete";
-            deleteBtn.className = "deleteButton";
-            deleteBtn.addEventListener("click", () => deleteRow(product.id, index));
-            cells[3].appendChild(deleteBtn);
+            renderTable();
         }
 
+        async function saveRow(productId, rowIndex) {
+            const table = document.getElementById("inventory");
+            const row = table.rows[rowIndex + 1];
+            const fields = row.querySelectorAll("input, select");
 
-        async function saveRow(id, index) {
-            const row = document.querySelectorAll("tr")[index + 1];
-            const inputs = row.querySelectorAll("input");
+            const updatedData = {};
 
-            const name = inputs[0].value;
-            const qty = Number(inputs[1].value);
-            const price = Number(inputs[2].value);
+            fields.forEach(field => {
+                const key = field.dataset.key;
+                let value = field.value;
 
-            /* Validate */
-            if (!name) {
-                alert("Please enter a product name!");
-                return;
-            }
-            if (qty<0) {
-                alert("Please enter a valid product count!");
-                return;
-            }
-            if (price<0) {
-                alert("Please enter a valid price!");
-                return;
-            }
-            try {
-                await updateDoc(doc(db, "products", id), {
-                    name: name,
-                    quantity: qty,
-                    price: price
-                });
-                //localStorage.setItem("products", JSON.stringify(products));
-                renderTable();
-            }
-            catch (err) {
-                console.error(err);
-                alert("Could not update item.")
-            }
+                if (value === "" || value == null) return;
+
+                if (field.type === "checkbox") {
+                    if (!field.checked) return;
+                    value = true;
+                }
+
+                console.log(key, " = ", value);
+                updatedData[key] = value;
+            });
+
+            if (Object.keys(updatedData).length === 0) return;
+
+            await updateDoc(doc(db, "products", productId), updatedData);
+            renderTable();
         }
 
         async function deleteRow(id, index) {
@@ -171,44 +405,109 @@
             }
         }
 
+        function toggleEye(column, columnActive) {
+            updateColumn(column, {active: columnActive}); // set this column to active / inactive
+            renderTable();
+        }
+        
         async function renderTable() {
+            /*  To do:
+                -   Retrieve Firestore columns:
+                    const cols = fetchColumns();
+
+                -   Iterate over columns to make the header:
+                    columns.forEach(col => { ... });
+
+                -   Iterate over products to make rows:
+                    products.forEach(product => {
+                        const row = document.createElement("tr");
+                    };
+
+                -   In each row, iterate over columns to make cells:
+                    columns.forEach(col => {
+                        const td = document.createElement("td");
+                        td.textContent = product[col.key] ?? "";
+                        row.appendChild(td);
+                    });
+            */
+
             const table = document.getElementById("inventory");
+            table.innerHTML = "";
             const products = await fetchProducts();
-            table.innerHTML = "<tr><th>Name</th><th>Count</th><th>Price</th></tr>";
+            // table.innerHTML = "<tr><th>Name</th><th>Count</th><th>Price</th><th><button id='addColumnBtn'>+<button></th></tr>";
+            const headerRow = document.createElement("tr");
+
+            // Get columns from Firestore
+            const getActive = (showCols === "active");
+            const columns = await fetchColumns(getActive);
+            console.log(columns);
+
+            // To do: add hide button to each column
+            for (const column of columns) {
+                const th = document.createElement("th");
+                th.textContent = column.keyText;
+                const eyeBtn = document.createElement("button");
+                if (column.active) {
+                    eyeBtn.textContent = "👁️";
+                    eyeBtn.onclick = function(){toggleEye(column, false);} // toggle "inactive" (false)
+                }
+                else {
+                    eyeBtn.textContent = "⌣";
+                    eyeBtn.onclick = function(){toggleEye(column, true);} // toggle "active" (true)
+                }
+                th.appendChild(eyeBtn);
+                headerRow.appendChild(th);
+            }
+
+            const actionTh = document.createElement("th");
+            const addColBtn = document.createElement("button");
+            addColBtn.textContent = "+";
+            addColBtn.addEventListener("click", () => {
+                addColumnForm.classList.toggle("hidden");
+                // click newKeyBtn
+                addColumnRow();
+            });
+            actionTh.appendChild(addColBtn);
+
+            headerRow.appendChild(actionTh);
+            table.appendChild(headerRow);
 
             // Create table rows dynamically
             products.forEach((item, index) => {
                 const row = table.insertRow(-1); // add row at the end
 
-                // Name, Quantity, Price cells
-                const nameCell = row.insertCell(0);
-                const qtyCell = row.insertCell(1);
-                const priceCell = row.insertCell(2);
-                const actionsCell = row.insertCell(3);
+                for (const col of columns) {
+                    const cell = row.insertCell();
+                    const value = item[col.key];
 
-                nameCell.textContent = item.name;
-                qtyCell.textContent = item.quantity;
-                priceCell.textContent = item.price;
+                    // console.log(item)
 
+                    cell.textContent = value ?? "";
+                }
+
+                const actionsCell = row.insertCell();
                 actionsCell.className = "actions";
 
                 // Edit button
                 const editBtn = document.createElement("button");
-                editBtn.textContent = "Edit";
+                editBtn.textContent = "✏️";
                 editBtn.className = "editButton";
-                editBtn.addEventListener("click", () => editRow(index, item));
+                editBtn.addEventListener("click", () => editRow(index, item, products));
                 actionsCell.appendChild(editBtn);
 
                 // Delete button
                 const deleteBtn = document.createElement("button");
-                deleteBtn.textContent = "Delete";
+                deleteBtn.textContent = "🗑️";
                 deleteBtn.className = "deleteButton";
                 deleteBtn.addEventListener("click", () => deleteRow(item.id, index));
                 actionsCell.appendChild(deleteBtn);
-            });
-        }
 
-        renderTable();
+                // (To do) Add remaining keys, values if custom exist
+            });
+
+            // Add a "New Item" button and show addForm
+
+        }
 
         const loginForm = document.getElementById("loginForm");
         const userPanel = document.getElementById("userPanel");
@@ -246,6 +545,8 @@
             document.getElementById("inventory").innerHTML = ""; // clear table
         });
 
+        // To do: hide addForm, show when "+" is clicked
+
         const form = document.getElementById("addForm")
 
         form.addEventListener("submit", async (e) => {
@@ -254,6 +555,8 @@
             const name = form.name.value;
             const qty = Number(form.quantity.value);
             const price = Number(form.price.value);
+
+            // (To do) Add customForm for custom product categories
 
             /* Validate */
             if (!name) {
@@ -269,11 +572,14 @@
                 return;
             }
 
+            // Check custom fields
+
             try {
                 await addDoc(collection(db, "products"), {
                     name: name,
                     quantity: qty,
                     price: price
+                    // Custom fields
                 });
                 form.reset();
                 renderTable();
@@ -285,6 +591,219 @@
                        
         });
 
+        // Create a new product category column (e.g., "Weight", "Best Before" etc.)
+        const newColumnForm = document.getElementById("addColumnForm");
+
+        newColumnForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            // Save new column to firestore
+            const rows = newColumnForm.querySelectorAll(".column-row");
+
+            for (const row of rows) {
+                const columns = await fetchColumns();
+                const existingKeys = columns.map(c => c.keyText);
+
+                const column = row.querySelector("input").value;
+                const type = row.querySelector("select").value;
+
+                // Check input
+                if (!column) {
+                    alert("Invalid input");
+                    return;
+                }
+
+                if (existingKeys.includes(column)) {
+                    alert("Column already exists.");
+                    return;
+                }
+
+                const columnData = {
+                        key: toCamelCase(column),
+                        keyText: column,
+                        type: type,
+                        active: true,
+                        order: existingKeys.length
+                    }
+
+                // Store select options, allow custom options
+                if (type === "select") {
+                    const options = [...row.querySelectorAll(".optionInput")]
+                        .map(i => i.value)
+                        .filter(Boolean);
+
+                    const allowCustom = row.querySelector(".allow-custom")?.checked ?? true;
+                    
+                    if (!allowCustom && options.length === 0) {
+                        alert("Either allow custom options or provide at least 1 option.");
+                        return;
+                    }
+
+                    columnData.options = options;
+                    columnData.allowCustom = allowCustom;
+                }
+
+                console.log(columnData)
+                
+                // Save to Firestore
+                try {
+                    await addDoc(collection(db, "columns"), columnData);
+                    resetAddColumnForm();
+                    renderTable();
+                }
+                catch (err) {
+                    console.error(err);
+                    alert("Could not add column.");
+                }
+            }
+        })
+
+        function resetAddColumnForm() {
+            addColumnForm.classList.add("hidden");
+
+            // Remove all rows except the first
+            const rows = Array.from(addColumnForm.querySelectorAll("div"));
+            rows.forEach((row, i) => {
+                if (i !== 0) row.remove();
+            });
+
+            // Optionally, reset the first row inputs
+            const firstRowInputs = rows[0]?.querySelectorAll("input, select");
+            firstRowInputs?.forEach(input => {
+                if (input.tagName === "INPUT") input.value = "";
+                if (input.tagName === "SELECT") input.selectedIndex = 0;
+            });
+        }
+
+        const cancelBtn = document.getElementById("columnCancelBtn");
+
+        cancelBtn.addEventListener("click", () => {
+            resetAddColumnForm();
+        });
+
+        function addColumnRow() {
+            const row = document.createElement("div");
+            row.className = "column-row";
+
+            // Key input
+            const keyLabel = document.createElement("label");
+            keyLabel.textContent = "Key:";
+            row.appendChild(keyLabel);
+
+            const keyInput = document.createElement("input");
+            keyInput.placeholder = "Column key";
+            row.appendChild(keyInput);
+
+            // Datatype select
+            const typeLabel = document.createElement("label");
+            typeLabel.textContent = "Datatype:";
+            row.appendChild(typeLabel);
+
+            // To do: add "select" option
+            const typeSelect = document.createElement("select");
+            ["text", "number", "date", "select"].forEach(type => {
+                const option = document.createElement("option");
+                option.value = type;
+                option.textContent = type;
+                typeSelect.appendChild(option);
+            });
+            row.appendChild(typeSelect);
+
+            typeSelect.addEventListener("change", () => {
+                if (typeSelect.value === "select") {
+                    createSelectForm(row);
+                } else {
+                    removeSelectForm(row);
+                }
+            });
+
+            // Remove button
+            const removeKeyBtn = document.createElement("button");
+            removeKeyBtn.type = "button";
+            removeKeyBtn.textContent = "-";
+            removeKeyBtn.addEventListener("click", () => row.remove());
+            row.appendChild(removeKeyBtn);
+
+            // Insert row above Cancel/Save buttons
+            addColumnForm.insertBefore(row, newKeyBtn);
+        }
+
+        newKeyBtn.addEventListener("click", () => {
+            addColumnRow();
+        });
+
+        function createSelectForm(row) {
+            if (row.querySelector(".select-form")) return;
+
+            const form = document.createElement("div");
+            form.className = "select-form";
+
+            const optionsContainer = document.createElement("div");
+            optionsContainer.className = "options-container";
+
+            form.appendChild(optionsContainer);
+            addOptionRow(optionsContainer);
+
+            // + button
+            const addBtn = document.createElement("button");
+            addBtn.type = "button";
+            addBtn.textContent = "+";
+            addBtn.addEventListener("click", () => addOptionRow(optionsContainer));
+
+            // Allow custom checkbox
+            const customLabel = document.createElement("label");
+            const customCheckbox = document.createElement("input");
+            customCheckbox.type = "checkbox";
+            customCheckbox.className = "allow-custom";
+
+            customLabel.append(customCheckbox, "Allow custom options");
+
+            // Optional update: Get options from cell / column / table
+
+            form.append(addBtn, customLabel);
+            row.appendChild(form);
+        }
+
+        // Remove form if it exists
+        function removeSelectForm(row) {
+            const selectForm = row.querySelector(".select-form");
+            if (selectForm) {
+                selectForm.remove();
+            }
+        }
+
+        function addOptionRow(container) {
+            const div = document.createElement("div");
+            div.className = "option-row";
+
+            const input = document.createElement("input");
+            input.placeholder = "Option value";
+            input.className = "optionInput";
+
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.textContent = "-";
+            removeBtn.addEventListener("click", () => div.remove());
+
+            div.append(input, removeBtn);
+            container.appendChild(div);
+        }
+
+        const showHideBtn = document.getElementById("show-hide-btn")
+        showHideBtn.addEventListener("click", () => toggleColumnVisibility())
+
+        function toggleColumnVisibility() {
+            if (showCols === "active") {
+                showCols = "all";
+                showHideBtn.textContent = "Hide inactive columns";
+                renderTable();
+                return;
+            }
+            
+            showCols = "active";
+            showHideBtn.textContent = "Show all columns";
+            renderTable();
+        }
     </script>
 
     <header>
@@ -303,19 +822,33 @@
     <main>
         <h1>My current stock</h1>
 
+        <div class="action-buttons">
+            <button id="show-hide-btn">Show all columns</button>
+        </div>
+
         <table id="inventory"></table>
 
-        <tr>
         <form id="addForm">
-            <td><input type="text" name="name" placeholder="New item"></td>
-            <td><input type="number" name="quantity" placeholder="1x"></td>
-            <td><input type="number" step="0.1" name="price" placeholder="Price""></td>
-            <td>
+            <h3>Add new item</h3>
+            <input type="text" name="name" placeholder="New item">
+            <input type="number" name="quantity" placeholder="1x">
+            <input type="number" step="0.01" name="price" placeholder="Price"">
+            
             <button type="submit">Save</button>
             <button type="reset">Clear</button>
-            </td>
         </form>
-        </tr>
+        
+        <form id="addColumnForm" class="hidden">
+            <h3>Add new column</h3>
+            <div>
+
+            </div>
+            
+            <button type="button" id="newKeyBtn">+</button>
+            <br>
+            <button type="button" id="columnCancelBtn">Cancel</button>
+            <button type="submit">Save</button>    
+        </form>
     </main>
 
     

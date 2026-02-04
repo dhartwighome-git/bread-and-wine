@@ -8,9 +8,14 @@ h1 {
   letter-spacing: 0.1px;
 }
 
+.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 table {
-  width: 100%;
-  max-width: 500px;
+  width: 90%;
+  max-width: 600px;
   border-collapse: collapse;
   margin-top: 10px;
 }
@@ -25,6 +30,10 @@ th {
   text-align: left;
 }
 
+td {
+  min-width: 75px;
+}
+
 #buttonColumn {
   width: 25%;
   min-width: 25px;
@@ -37,16 +46,11 @@ tbody tr:hover {
 
 input {
   width: 25%;
-  min-width: 50px;
-  max-width: 100px;
+  min-width: 100px;
+  max-width: 150px;
 }
 
-button {
-  padding: 4px 8px;
-  cursor: pointer;
-  border-radius: 5px;
-  border-width: 1px;
-}
+
 
 .editButton {
     background-color: beige;
@@ -76,10 +80,45 @@ tr:nth-child(odd) {
   background-color: #ffffff;
 }
 
-.actions button {
+label {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.column-row input,
+.column-row select {
+  margin-right: 10px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.hidden {
   visibility: hidden;
 }
 
-tbody tr:hover .actions button {
-  visibility: visible;
+input, select {
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  transition: border-color 0.5s ease, border-width 0.5s ease, border-radius 0.5s ease;
+}
+
+button {
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: border 0.5s ease, filter 0.5s ease;
+}
+
+input:hover, input:focus, select:hover, select:focus  {
+  border-width: 1.5px;
+  border-color: black;
+  border-radius: 5px;
+}
+
+button:hover {
+  border: 1px solid lightgray;
+  filter: brightness(1.2);
 }
