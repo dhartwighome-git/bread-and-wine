@@ -165,7 +165,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+        let userId = null;
 
+        // Concatenate column names to use as key
         function toCamelCase(str) {
             return str
                 .replace(/[^a-zA-Z0-9 ]+/g, '')      // remove non-alphanumeric
@@ -175,14 +177,16 @@
 
         onAuthStateChanged(auth, user => {
             if (user) {
+                userId = user.uid;
                 loginForm.style.display = "none";
                 userPanel.style.display = "block";
                 userEmailSpan.textContent = `Logged in as: ${user.email}`;
                 renderTable();
             } else {
+                userId = null;
                 loginForm.style.display = "block";
                 userPanel.style.display = "none";
-                document.getElementById("inventory").innerHTML = "";
+                clearTable();
             }
         });
 
@@ -190,7 +194,9 @@
 
 
         async function fetchProducts() {
-            const snapshot = await getDocs(collection(db, "products"));
+            console.log("In fetchProducts")
+            const snapshot = await getDocs(collection(db, `users/${userId}/products`));
+            console.log(snapshot);
             return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
 
@@ -202,7 +208,8 @@
                 columnMap.set(col.key, { ...col })
             })
 
-            const snapshot = await getDocs(collection(db, "columns"));
+            const snapshot = await getDocs(collection(db, `users/${userId}/columns`));
+            console.log(snapshot);
 
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
@@ -235,7 +242,7 @@
                 throw new Error("updateColumn: column.key is required");
             }
 
-            const userColumnsRef = collection(db, "columns");
+            const userColumnsRef = collection(db, `users/${userId}/columns`);
 
             if (column.id) {
                 await updateDoc(
@@ -387,7 +394,8 @@
 
             if (Object.keys(updatedData).length === 0) return;
 
-            await updateDoc(doc(db, "products", productId), updatedData);
+            // await updateDoc(doc(db, `users/${user.uid}/products`, productId), updatedData);
+            await updateDoc(doc(db, `users/${userId}/products`, productId), updatedData);
             renderTable();
         }
 
@@ -397,7 +405,7 @@
 
             try {
                 console.log("Deleting product:", id)
-                await deleteDoc(doc(db, "products", id));
+                await deleteDoc(doc(db, `users/${userId}/products`, id));
                 renderTable();
             } catch (err) {
                 console.error(err);
@@ -527,7 +535,7 @@
             loginForm.style.display = "none";
             userPanel.style.display = "block";
             userEmailSpan.textContent = `Logged in as: ${user.email}`;
-            renderTable(); // fetch products after login
+            
         } catch (error) {
             console.error(error.code, error.message);
             alert("Login failed: " + error.message);
@@ -542,8 +550,12 @@
             loginForm.style.display = "block";
             userPanel.style.display = "none";
             loginForm.reset();
-            document.getElementById("inventory").innerHTML = ""; // clear table
+            clearTable();
         });
+
+        function clearTable() {
+            document.getElementById("inventory").innerHTML = "";
+        };
 
         // To do: hide addForm, show when "+" is clicked
 
@@ -575,7 +587,7 @@
             // Check custom fields
 
             try {
-                await addDoc(collection(db, "products"), {
+                await addDoc(collection(db, `users/${userId}/products`), {
                     name: name,
                     quantity: qty,
                     price: price
@@ -647,7 +659,7 @@
                 
                 // Save to Firestore
                 try {
-                    await addDoc(collection(db, "columns"), columnData);
+                    await addDoc(collection(db, `users/${userId}/columns`), columnData);
                     resetAddColumnForm();
                     renderTable();
                 }
