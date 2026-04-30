@@ -1,6 +1,18 @@
+html, body, main {
+  min-height: 100vh;
+}
+
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont,
                "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+main  {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 h1 {
@@ -13,11 +25,58 @@ h1 {
   margin-right: auto;
 }
 
+nav {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: row;
+}
+
+.menu {
+  position: relative;
+}
+
+.menu-title {
+  background: none;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.menu-title:hover {
+  background-color: #eaeaea;
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+
+  display: none;
+  flex-direction: column;
+
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+
+  min-width: 150px;
+  z-index: 1000;
+
+  
+}
+
+.search-bar {
+  padding-top: 10px;
+}
+
+div:has(table) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 table {
-  width: 90%;
-  max-width: 600px;
+  width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+  margin: 10px 0;
 }
 
 th, td {
@@ -28,6 +87,27 @@ th, td {
 th {
   background-color: #f4f4f4;
   text-align: left;
+  position: relative;
+  padding-top: 15px;
+}
+
+.th-label {
+  display: block;
+}
+
+th.drag-left {
+  border-left: 3px solid #007bff;
+}
+
+th.drag-right {
+  border-right: 3px solid #007bff;
+}
+
+.drag-handle {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  cursor: grab;
 }
 
 td {
@@ -40,8 +120,12 @@ td {
   max-width: 100px;
 }
 
-tbody tr:hover {
-  background-color: #f9f9f9;
+td:hover {
+  background-color: rgb(220 189 189 / 25%);
+}
+
+tr.temp td {
+  background-color: #fff8e1;
 }
 
 input {
@@ -93,7 +177,8 @@ label {
 }
 
 .hidden {
-  visibility: hidden;
+  /* visibility: hidden; */
+  display: none;
 }
 
 input, select {
@@ -110,6 +195,7 @@ button {
   cursor: pointer;
   border-radius: 5px;
   transition: border 0.5s ease, filter 0.5s ease;
+  text-align: left;
 }
 
 input:hover, input:focus, select:hover, select:focus  {
@@ -118,7 +204,74 @@ input:hover, input:focus, select:hover, select:focus  {
   border-radius: 5px;
 }
 
-button:hover {
+button:hover:not(.menu-title) {
   border: 1px solid lightgray;
   filter: brightness(1.2);
+}
+
+.navigation {
+  margin-top: auto;
+
+  position: sticky;
+  bottom: 0;
+
+  width: 100%;
+  background-color: white;
+  padding: 5px;
+
+  z-index: 1000;
+}
+
+.navigation button {
+  font-size: 15px;
+  margin: 2px;
+}
+
+.navigation button.active-view {
+  font-weight: 700;
+  background-color: lemonchiffon;
+}
+
+.popup {
+  position: absolute;
+  background-color: white;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  z-index: 1000;
+}
+
+.popup button {
+  width: 150px;
+  text-align: left;
+}
+
+.popup div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.popup label {
+  font-weight: normal;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.popup input {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
