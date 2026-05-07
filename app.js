@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebas
 import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
-import { firebaseConfig } from "/firebaseConfig.js";
+import { firebaseConfig } from "./firebaseConfig.js";
 import { menu, DEFAULT_COLUMNS, DEFAULT_SHOPPING_COLUMNS,  } from "./defaults.js";
 import { toCamelCase, capitalize, getTodayStart } from "./helpers.js";
 
