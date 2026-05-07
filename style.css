@@ -7,6 +7,25 @@ body {
                "Segoe UI", Roboto, Arial, sans-serif;
 }
 
+header {
+  justify-items: center;
+  padding: 0 min(40vw, 200px);
+}
+
+header input {
+  min-width: max(20vw, 200px);
+  height: 40px;
+  border-radius: 20px;
+  background-color: #e73c7e21;
+  border-style: none;
+  margin: 5px;
+}
+
+header button {
+  border-radius: 20px;
+  margin: 5px;
+}
+
 main  {
   display: flex;
   flex-direction: column;
@@ -77,8 +96,6 @@ nav {
 
   min-width: 150px;
   z-index: 1000;
-
-  
 }
 
 .search-bar {
@@ -163,7 +180,17 @@ input {
 }
 
 button[type="submit"], .saveButton {
-    background-color: rgba(172, 255, 47, 0.25);
+    background: linear-gradient(-45deg, #e73c7e, #23a5d5); /*rgba(172, 255, 47, 0.25);*/
+    color: white;
+    border: none;
+    border-radius: 6px;
+    box-sizing: border-box;
+
+    padding: 8px 14px;
+    cursor: pointer;
+
+    transition: opacity 0.15s ease,
+                transform 0.1s ease;
 }
 
 button:hover {
@@ -219,10 +246,10 @@ button {
 input:hover, input:focus, select:hover, select:focus  {
   border-width: 1.5px;
   border-color: black;
-  border-radius: 5px;
+  /*border-radius: 5px;*/
 }
 
-button:hover:not(.menu-title) {
+button:hover:not(.menu-title, button[type=submit]) {
   border: 1px solid lightgray;
   filter: brightness(1.2);
 }

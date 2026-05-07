@@ -1043,8 +1043,10 @@ loginForm.addEventListener("submit", async (e) => {
 registerForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    const email = registerForm.elements["email"].value;
+    const password = registerForm.elements["password"].value;
+
+    console.log(email);
 
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -1065,6 +1067,7 @@ registerForm.addEventListener("submit", async (e) => {
         console.log(error.code, error.message);
         alert("Registration failed: " + error.message);
     }
+    registerForm.reset();
 })
 
 // Sign user out
