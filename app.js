@@ -1,207 +1,11 @@
 /* Initialise Firestore database */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
-// const auth = getAuth();
-
-// Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyA73guwI5BCtkvaqLUgBkQKc9zF209fNR0",
-    authDomain: "bread-and-wine.firebaseapp.com",
-    projectId: "bread-and-wine",
-    storageBucket: "bread-and-wine.firebasestorage.app",
-    messagingSenderId: "754486129562",
-    appId: "1:754486129562:web:1194bd45b506597857c023"
-};
-
-// Default menu bar
-const menu = {
-    global: {
-        file: [],
-        edit: ["Rearrange columns", "Lock columns"],
-        view: [],
-        help: []
-    },
-    "stock-table": {
-        // Add tools later
-    },
-    "shopping-list": {
-        // Add tools later
-    }
-};
-
-// Default columns (will show by default, can be hidden)
-const DEFAULT_COLUMNS = [
-    // Product
-    {
-        key: "name",
-        keyText: "Name",
-        type: "text",
-        order: 0,
-        active: true
-    },
-
-    // Description
-    {
-        key: "description",
-        keyText: "Description",
-        type: "text",
-        order: 1,
-        active: true
-    },
-
-    // Product Group
-    {
-        key: "group",
-        keyText: "Group",
-        type: "select",
-        order: 2,
-        allowCustom: true,
-        active: true
-    },
-
-    // Aisle
-    {
-        key: "aisle",
-        keyText: "Aisle",
-        type: "select",
-        order: 3,
-        allowCustom: true,
-        active: true
-    },
-
-    // Brand
-    {
-        key: "brand",
-        keyText: "Brand",
-        type: "select",
-        order: 4,
-        allowCustom: true,
-        active: true
-    },
-
-    // Price
-    {
-        key: "price",
-        keyText: "Price",
-        type: "number",
-        order: 7,
-        active: true
-    },
-
-    // is Special Offer?
-    {
-        key: "specialOffer",
-        keyText: "Special offer?",
-        type: "checkbox",
-        order: 6,
-        active: true
-    },
-
-    // Count (CU)
-    {
-        key: "countCU",
-        keyText: "Count (CU)",
-        type: "number",
-        order: 5,
-        active: true
-    },
-
-    // Contents (Slices, Pieces etc.)
-    {
-        key: "pieces",
-        keyText: "Content (Pcs.)",
-        type: "number",
-        order: 8,
-        active: true
-    },
-
-    // Shop
-    {
-        key: "shop",
-        keyText: "Shop",
-        type: "select",
-        order: 9,
-        allowCustom: true,
-        active: true
-    },
-
-    // Make plan using...
-    {
-        key: "shoppingPlanSource",
-        keyText: "Shopping plan from...",
-        type: "select",
-        order: 10,
-        allowCustom: false,
-        active: true,
-        options: ["Name", "Group"]
-    },
-
-    // Min count (CU)
-    {
-        key: "minCountCU",
-        keyText: "Min Count (CU)",
-        type: "number",
-        order: 11,
-        active: true
-    },
-
-    // Max Count (CU)
-    {
-        key: "maxCountCU",
-        keyText: "Max Count (CU)",
-        type: "number",
-        order: 12,
-        active: true
-    },
-
-    // Best before
-    {
-        key: "bestBefore",
-        keyText: "Best before",
-        type: "date",
-        order: 13,
-        active: true
-    },
-]
-
-const DEFAULT_SHOPPING_COLUMNS = [
-    // Product Group
-    {
-        key: "group",
-        keyText: "Group",
-        type: "select",
-        order: 0,
-        allowCustom: true,
-        active: true
-    },
-    // Product
-    {
-        key: "name",
-        keyText: "Name",
-        type: "text",
-        order: 1,
-        active: true
-    },
-    // Count (CU)
-    {
-        key: "countCU",
-        keyText: "Count (CU)",
-        type: "number",
-        order: 2,
-        active: true
-    },
-    // Predicted Count (CU)
-    {
-        key: "predictedCU",
-        keyText: "Predicted Count (CU)",
-        type: "number",
-        order: 3,
-        active: true,
-        isFixedCol: true
-    },
-]
+import { firebaseConfig } from "/firebaseConfig.js";
+import { menu, DEFAULT_COLUMNS, DEFAULT_SHOPPING_COLUMNS,  } from "./defaults.js";
+import { toCamelCase, capitalize, getTodayStart } from "./helpers.js";
 
 // Constants
 var showCols = "active";
@@ -238,32 +42,26 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 let userId = null;
 
-// Helper functions
-// Concatenate column names to use as key (helper)
-function toCamelCase(str) {
-    return str
-        .replace(/[^a-zA-Z0-9 ]+/g, '')      // remove non-alphanumeric
-        .replace(/\s+(.)/g, (_, chr) => chr.toUpperCase()) // capitalize letters after spaces
-        .replace(/^(.)/, (_, chr) => chr.toLowerCase());   // lowercase first letter
-}
-
-// Capitalize String
-const capitalize = ([first, ...rest]) => first.toUpperCase() + rest.join("");
-
 // Change login form appearance
+
+const loginForm = document.getElementById("loginForm");
+
 onAuthStateChanged(auth, user => {
     if (user) {
         userId = user.uid;
-        loginForm.style.display = "none";
+        loginForm.classList.add("hidden");
         userPanel.style.display = "block";
         userEmailSpan.textContent = `Logged in as: ${user.email}`;
         console.log("User logged in, rendering table...")
+        showMainView();
         renderTable(currentView);
     } else {
         userId = null;
-        loginForm.style.display = "block";
+        // loginForm.style.display = "block";
         userPanel.style.display = "none";
+
         clearTable();
+        showWelcomeView();
     }
 });
 
@@ -271,6 +69,9 @@ onAuthStateChanged(auth, user => {
 async function fetchProducts() {
     console.log("Calling fetchProducts")
     const snapshot = await getDocs(collection(db, `users/${userId}/products`));
+
+    // To do: If empty, add a default product
+
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
@@ -829,6 +630,9 @@ function mergeProducts(fetchedProducts, checkDeleted = true, keepTemporary = tru
 
 // Handle menu actions
 function handleMenuAction(action) {
+
+    // To do: Move Column Visibility to menu bar
+
     if (action === "Rearrange columns" || action === "Lock columns") {
         isRearranging = (action === "Rearrange columns") ? true : false;
         renderTable(currentView);
@@ -1193,6 +997,7 @@ async function finalizeColumnOrder() {
                 console.log("Updating column order:", col);
                 await updateDoc(doc(db, `users/${userId}/columns`, col.id), { order: col.order });
             } else {
+                // To do: Allow column creation
                 console.log("Column has no id:", col);
             }
         }
@@ -1201,42 +1006,109 @@ async function finalizeColumnOrder() {
 }
 
 // Login form
-const loginForm = document.getElementById("loginForm");
 const userPanel = document.getElementById("userPanel");
 const userEmailSpan = document.getElementById("userEmail");
 
+const registerForm = document.getElementById("registerForm");
+
+const welcomeView = document.getElementById("welcome-screen");
+const mainView = document.querySelector("main");
+
 loginForm.addEventListener("submit", async (e) => {
-e.preventDefault();
+    e.preventDefault();
 
-const email = loginForm.email.value;
-const password = loginForm.password.value;
+    const email = loginForm.email.value;
+    const password = loginForm.password.value;
 
-// Sign user in
-try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    // Optional: hide login form and show main app
-    loginForm.style.display = "none";
-    userPanel.style.display = "block";
-    userEmailSpan.textContent = `Logged in as: ${user.email}`;
-    
-} catch (error) {
-    console.error(error.code, error.message);
-    alert("Login failed: " + error.message);
-}
+    // Sign user in
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Optional: hide login form and show main app
+        // loginForm.style.display = "none";
+        userPanel.style.display = "block";
+        userEmailSpan.textContent = `Logged in as: ${user.email}`;
+
+        // change View
+        welcomeView.classList.add("hidden");
+        mainView.classList.remove("hidden");
+        
+    } catch (error) {
+        console.error(error.code, error.message);
+        alert("Login failed: " + error.message);
+    }
 });
+
+registerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        registerForm.classList.add("hidden");
+        alert("Registration successful!");
+
+        userId = user.uid;
+
+        await setDoc(doc(db, `users/${user.uid}`), {
+            createdAt: Date.now(),
+            email: user.email,
+            role: "alpha"               // Developing stage
+        })
+
+    } catch (error) {
+        console.log(error.code, error.message);
+        alert("Registration failed: " + error.message);
+    }
+})
 
 // Sign user out
 signOutBtn.addEventListener("click", async () => {
     await signOut(auth);
 
     // Reset UI
-    loginForm.style.display = "block";
     userPanel.style.display = "none";
     loginForm.reset();
     clearTable();
+
+    // change View
+    // welcomeView.classList.remove("hidden");
+    // mainView.classList.add("hidden");
+    // showLoginForm();
+    showWelcomeView();
 });
+
+const registerBtn = document.getElementById("registerBtn");
+registerBtn.addEventListener("click", () => showRegisterForm());
+
+const loginBtn = document.getElementById("loginBtn");
+loginBtn.addEventListener("click", () => showLoginForm());
+
+function showRegisterForm() {
+    registerForm.classList.remove("hidden");
+    loginForm.classList.add("hidden");
+}
+
+function showLoginForm() {
+    registerForm.classList.add("hidden");
+    loginForm.classList.remove("hidden");
+}
+
+function showMainView() {
+    welcomeView.classList.add("hidden");
+    mainView.classList.remove("hidden");
+}
+
+function showWelcomeView() {
+    welcomeView.classList.remove("hidden");
+    mainView.classList.add("hidden");
+    showLoginForm();
+}
 
 // Clear the table
 function clearTable() {
@@ -1514,6 +1386,9 @@ showHideBtn.addEventListener("click", () => toggleColumnVisibility())
 
 // Show all columns / Hide inactive
 function toggleColumnVisibility() {
+    // Reset currentColumns
+    currentColumns = [];
+
     if (showCols === "active") {
         showCols = "all";
         showHideBtn.textContent = "Hide inactive columns";
@@ -1526,10 +1401,10 @@ function toggleColumnVisibility() {
     renderTable(currentView);
 }
 
-function getTodayStart() {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-}
+// function getTodayStart() {
+//     const now = new Date();
+//     return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+// }
 
 function calculateMovingAverage(product, includeZeroConsumption = true) {
     console.log("Calculating weighted average for: " + product.name);

@@ -15,6 +15,23 @@ main  {
   padding-right: 20px;
 }
 
+.shadow {
+  box-shadow: rgba(149, 157, 165, 0.5) 0px 8px 24px;
+}
+
+.gradient-magenta-blue {
+  background: linear-gradient(-45deg, #e73c7e, #23a5d5);
+}
+
+#welcome-screen {
+  padding: 50px 20px;
+  margin: min(20%, 200px);
+  color: white;
+  border-radius: 5px;
+  max-width: 500px;
+  justify-self: center;
+}
+
 h1 {
   font-size: 24px;
   letter-spacing: 0.1px;
@@ -69,6 +86,7 @@ nav {
 }
 
 div:has(table) {
+  min-width: min(80vw, 800px);
   max-width: 100%;
   overflow-x: auto;
 }

@@ -11,9 +11,17 @@
 
     <header>
         <form id="loginForm">
-            <input type="email" id="email" placeholder="Email" required>
+            <input type="email" id="email" placeholder="Email" autocomplete="email" required>
             <input type="password" id="password" placeholder="Password" required>
             <button type="submit">Login</button>
+            <button type="button" id="registerBtn">Register</button>
+        </form>
+
+        <form id="registerForm" class="hidden">
+            <input type="email" id="email" placeholder="Email" autocomplete="email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Register</button>
+            <button type="button" id="loginBtn">Login</button>
         </form>
 
         <div id="userPanel" style="display:none">
@@ -21,8 +29,16 @@
             <button id="signOutBtn">Sign Out</button>
         </div>
     </header>
+
+    <div id="welcome-screen" class="shadow gradient-magenta-blue">
+        <div id="welcome-container">
+            <h1>Welcome</h1>
+            <p>Organize all your products, shopping lists, and personal inventory in a simple and flexible way. Make better everyday decisions with a clean, customizable interface that adapts to your needs.</p>
+            <p>Sign up for free!</p>
+        </div>
+    </div>
     
-    <main>
+    <main class="hidden">
         <nav id="menuBar"></nav>
 
         <div class="stock-table">
